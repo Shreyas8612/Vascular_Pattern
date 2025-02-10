@@ -5,6 +5,78 @@ import networkx as nx
 # Import the skeleton image from the previous step
 Image = skeleton_cleaned
 
+# Horizontal
+kernel_h = np.array([[-1,  2, -1],
+                     [-1,  2, -1],
+                     [-1,  2, -1]], dtype=np.float32)
+
+# Vertical
+kernel_v = np.array([[-1, -1, -1],
+                     [ 2,  2,  2],
+                     [-1, -1, -1]], dtype=np.float32)
+
+# +45 degree
+kernel_45p = np.array([[ 2, -1, -1],
+                       [-1,  2, -1],
+                       [-1, -1,  2]], dtype=np.float32)
+
+# -45 degree
+kernel_45m = np.array([[-1, -1,  2],
+                       [-1,  2, -1],
+                       [ 2, -1, -1]], dtype=np.float32)
+
+def line_detection_convolution(img, kernels, threshold=1):
+    # We'll accumulate maximum response across all kernels
+    h, w = img.shape
+    response_stack = np.zeros((h, w, len(kernels)), dtype=np.float32)
+
+    for i, K in enumerate(kernels):
+        # Filter using signal's convolve2d
+        resp = signal.convolve2d(img, K, boundary='symm', mode='same')
+        response_stack[..., i] = resp
+
+    # Take maximum response across all kernels
+    max_resp = np.max(response_stack, axis=2)
+
+    # Threshold
+    line_mask = (max_resp > threshold).astype(np.float32)
+    return line_mask
+
+def track_lines_in_mask(line_mask):
+    visited = np.zeros_like(line_mask, dtype=bool)
+    h, w = line_mask.shape
+    paths = []
+
+    def neighbors(r, c):
+        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1),
+                       (-1, -1), (-1, 1), (1, -1), (1, 1)]:
+            rr, cc = r + dr, c + dc
+            if 0 <= rr < h and 0 <= cc < w:
+                yield rr, cc
+    # What is DFS?
+    # Depth-first search (DFS) is an algorithm for traversing or searching tree or graph data structures. It starts at the root node and explores as far as possible along each branch before backtracking.
+    def dfs(r, c): # Depth-first search -
+        stack = [(r, c)]
+        path_pixels = []
+        while stack:
+            rr, cc = stack.pop()
+            if not visited[rr, cc]:
+                visited[rr, cc] = True
+                path_pixels.append((rr, cc))
+                # push neighbors that are line pixels
+                for nr, nc in neighbors(rr, cc):
+                    if line_mask[nr, nc] == 1 and not visited[nr, nc]:
+                        stack.append((nr, nc))
+        return path_pixels
+
+    for row in range(h):
+        for col in range(w):
+            if line_mask[row, col] == 1 and not visited[row, col]:
+                path = dfs(row, col)
+                if len(path) > 500:
+                    paths.append(path)
+    return paths
+
 def draw_paths(paths, image_shape, scale=1):
     """
     Draws a set of paths using turtle graphics.
