@@ -2,6 +2,7 @@ from Pre_Turtle import *
 import turtle
 import networkx as nx
 
+# Import the skeleton image from the previous step
 Image = skeleton_cleaned
 
 def draw_paths(paths, image_shape, scale=1):
