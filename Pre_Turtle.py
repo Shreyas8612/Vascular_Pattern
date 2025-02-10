@@ -3,8 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal, ndimage
 from skimage import morphology
-import networkx as nx
-import turtle
 import cv2
 #%%
 # Load the retinal fundus image in grayscale
@@ -257,6 +255,7 @@ expanded = morphology.binary_dilation(edges_minabs, selem)
 
 # Shrink the image (erosion)
 shrunk = morphology.binary_erosion(expanded, selem)
+shrunk = morphology.remove_small_objects(shrunk, min_size=100)
 
 cleaned_edges = morphology.remove_small_objects(edges_morph, min_size=100)
 
@@ -305,7 +304,7 @@ def line_detection_convolution(img, kernels, threshold=1):
     max_resp = np.max(response_stack, axis=2)
 
     # Threshold
-    line_mask = (max_resp > threshold).astype(np.uint8)
+    line_mask = (max_resp > threshold).astype(np.float32)
     return line_mask
 
 def track_lines_in_mask(line_mask):
@@ -342,16 +341,6 @@ def track_lines_in_mask(line_mask):
         for col in range(w):
             if line_mask[row, col] == 1 and not visited[row, col]:
                 path = dfs(row, col)
-                if len(path) > 500:  # ignore single-pixel
+                if len(path) > 500:
                     paths.append(path)
-
     return paths
-
-# 1. Convolve with line detection kernels
-kernels = [kernel_h, kernel_v, kernel_45p, kernel_45m]
-line_mask = line_detection_convolution(skeleton_cleaned, kernels, threshold=1)
-
-# 2. Track lines in the binary mask
-paths = track_lines_in_mask(line_mask)
-
-#%%
