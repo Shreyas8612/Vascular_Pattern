@@ -1,9 +1,10 @@
 from Pre_Turtle import *
+from Pre_Turtle_2 import *
 import turtle
 import networkx as nx
 
 # Import the skeleton image from the previous step
-Image = skeleton_cleaned
+Image = skeleton_cleaned  # For gradient operator - change it to skeleton
 
 def skeleton_to_graph(skel):
     """
@@ -82,6 +83,41 @@ def find_branches_in_skeleton(G):
 
     return all_branches
 
+def display_results(skel, G, all_branches):
+    """
+    Displays the skeleton image, the graph representation, and the traced branches.
+    """
+    fig, axes = plt.subplots(1, 3, figsize=(22, 8))
+
+    # Skeleton Image
+    axes[0].imshow(skel, cmap='gray')
+    axes[0].set_title("Skeleton Image")
+    axes[0].axis("off")
+
+    # Graph Representation
+    pos = {node: (node[1], -node[0]) for node in G.nodes()}  # Flip y-axis for correct orientation
+    nx.draw(G, pos, node_size=1, edge_color='cyan', linewidths=0.5, ax=axes[1])
+    axes[1].set_title("Skeleton to Graph")
+    axes[1].set_aspect('equal')  # Keep aspect ratio consistent
+    axes[1].set_xlim([0, skel.shape[1]])  # Ensure proper scaling
+    axes[1].set_ylim([-skel.shape[0], 0])  # Flip y-axis to align correctly
+
+    # Traced Branches
+    colors = ['r', 'g', 'b', 'm', 'y', 'c']
+    for i, branch in enumerate(all_branches):
+        x = [node[1] for node in branch]
+        y = [-node[0] for node in branch]  # Flip y for proper orientation
+        axes[2].plot(x, y, marker='o', markersize=1, linestyle='-', linewidth=0.5, color=colors[i % len(colors)])
+    axes[2].set_title("Extracted Branches")
+    axes[2].set_aspect('equal')  # Maintain aspect ratio
+    axes[2].set_xlim([0, skel.shape[1]])
+    axes[2].set_ylim([-skel.shape[0], 0])
+    axes[2].axis("off")
+
+    plt.tight_layout()
+    plt.show()
+    return fig
+
 
 def draw_branches_with_turtle(branches, image_shape, scale=1.0):
     """
@@ -137,5 +173,8 @@ if __name__ == "__main__":
     # Step 2: Find meaningful vessel branches
     branches = find_branches_in_skeleton(G)
 
-    # Step 3: Draw branches using the corrected coordinate transform
+    # Step 3: Display the results
+    fig = display_results(Image, G, branches)
+
+    # Step 4: Draw branches using the corrected coordinate transform
     draw_branches_with_turtle(branches, image_shape, scale=1.0)
